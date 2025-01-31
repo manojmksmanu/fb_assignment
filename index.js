@@ -76,6 +76,14 @@ app.get("/pages", async (req, res) => {
 // Fetch page insights
 app.get("/page-insights", async (req, res) => {
   const { page_id, access_token, since, until } = req.query;
+
+  // Validate the required parameters
+  if (!page_id || !access_token) {
+    return res
+      .status(400)
+      .json({ error: "Missing required parameters: page_id or access_token" });
+  }
+
   try {
     const insights = await axios.get(
       `https://graph.facebook.com/${page_id}/insights`,
@@ -83,20 +91,31 @@ app.get("/page-insights", async (req, res) => {
         params: {
           metric:
             "page_fan_adds,page_engaged_users,page_impressions,page_actions_post_reactions_total",
-          since,
-          until,
+          since: since || new Date().setMonth(new Date().getMonth() - 1), // Default to last month
+          until: until || new Date(), // Default to current date
           period: "total_over_range",
           access_token,
         },
       }
     );
-    console.log(insights.data); // Log Facebook API response to debug
+    console.log("Facebook Insights Response:", insights.data); // Log the full response data
+    if (!insights.data || insights.data.length === 0) {
+      return res
+        .status(404)
+        .json({ error: "No insights available for this page." });
+    }
     res.json(insights.data);
   } catch (error) {
     console.error(
       "Error fetching insights:",
       error.response?.data || error.message
-    ); // Log error response
-    res.status(500).json({ error: error.message });
+    );
+    if (error.response) {
+      console.error("Full Error Response:", error.response.data); // Log the full response error data
+    }
+    res
+      .status(500)
+      .json({ error: "Internal server error. Please check server logs." });
   }
 });
+
