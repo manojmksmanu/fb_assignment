@@ -14,8 +14,8 @@ app.use(express.json());
 
 const FACEBOOK_APP_ID = "914299164196328";
 const FACEBOOK_APP_SECRET = "8105987788e2a1cd3b42f4f6fda0225a";
-const REDIRECT_URI =
-  "https://53b0-2409-40d0-114d-b6f0-3529-926-1948-5fc.ngrok-free.app/callback";
+const REDIRECT_URI = "https://fb-assignment.onrender.com/callback";
+
 
 if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
   throw new Error(
@@ -90,11 +90,13 @@ app.get("/page-insights", async (req, res) => {
         },
       }
     );
+    console.log(insights.data); // Log Facebook API response to debug
     res.json(insights.data);
   } catch (error) {
+    console.error(
+      "Error fetching insights:",
+      error.response?.data || error.message
+    ); // Log error response
     res.status(500).json({ error: error.message });
   }
 });
-
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
