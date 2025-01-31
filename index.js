@@ -155,6 +155,76 @@ app.get("/pages", async (req, res) => {
 //       });
 //   }
 // });
+// app.get("/page-insights", async (req, res) => {
+//   const { page_id, access_token } = req.query;
+
+//   if (!page_id || !access_token) {
+//     return res.status(400).json({ error: "Missing page_id or access_token" });
+//   }
+
+//   // Simplified metrics list - using only the most basic metrics
+//   const validMetrics = [
+//     "page_fan_adds",
+//     "page_views_total",
+//     "page_impressions",
+//   ];
+
+//   try {
+//     // Set time range to last 7 days to ensure we're within limits
+//     const sinceTimestamp = Math.floor(Date.now() / 1000 - 7 * 24 * 60 * 60);
+//     const untilTimestamp = Math.floor(Date.now() / 1000);
+
+//     console.log("Making request with:", {
+//       url: `https://graph.facebook.com/v18.0/${page_id}/insights`,
+//       page_id,
+//       access_token: "****" + access_token.slice(-4),
+//       metrics: validMetrics,
+//       since: new Date(sinceTimestamp * 1000).toISOString(),
+//       until: new Date(untilTimestamp * 1000).toISOString(),
+//     });
+
+//     const response = await axios.get(
+//       `https://graph.facebook.com/v18.0/${page_id}/insights`,
+//       {
+//         params: {
+//           metric: validMetrics.join(","),
+//           period: "day",
+//           since: sinceTimestamp,
+//           until: untilTimestamp,
+//           access_token,
+//         },
+//       }
+//     );
+
+//     console.log("Response status:", response.status);
+//     console.log("Response data structure:", {
+//       hasData: !!response.data,
+//       dataType: typeof response.data,
+//       keys: response.data ? Object.keys(response.data) : null,
+//     });
+
+//     res.json({
+//       success: true,
+//       data: response.data,
+//       timeRange: {
+//         since: new Date(sinceTimestamp * 1000).toISOString(),
+//         until: new Date(untilTimestamp * 1000).toISOString(),
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Detailed error:", {
+//       message: error.message,
+//       response: error.response?.data,
+//       status: error.response?.status,
+//       headers: error.response?.headers,
+//     });
+
+//     res.status(error.response?.status || 500).json({
+//       error: "Error fetching insights",
+//       details: error.response?.data || error.message,
+//     });
+//   }
+// });
 app.get("/page-insights", async (req, res) => {
   const { page_id, access_token } = req.query;
 
@@ -162,7 +232,6 @@ app.get("/page-insights", async (req, res) => {
     return res.status(400).json({ error: "Missing page_id or access_token" });
   }
 
-  // Simplified metrics list - using only the most basic metrics
   const validMetrics = [
     "page_fan_adds",
     "page_views_total",
@@ -170,18 +239,8 @@ app.get("/page-insights", async (req, res) => {
   ];
 
   try {
-    // Set time range to last 7 days to ensure we're within limits
     const sinceTimestamp = Math.floor(Date.now() / 1000 - 7 * 24 * 60 * 60);
     const untilTimestamp = Math.floor(Date.now() / 1000);
-
-    console.log("Making request with:", {
-      url: `https://graph.facebook.com/v18.0/${page_id}/insights`,
-      page_id,
-      access_token: "****" + access_token.slice(-4),
-      metrics: validMetrics,
-      since: new Date(sinceTimestamp * 1000).toISOString(),
-      until: new Date(untilTimestamp * 1000).toISOString(),
-    });
 
     const response = await axios.get(
       `https://graph.facebook.com/v18.0/${page_id}/insights`,
@@ -196,16 +255,10 @@ app.get("/page-insights", async (req, res) => {
       }
     );
 
-    console.log("Response status:", response.status);
-    console.log("Response data structure:", {
-      hasData: !!response.data,
-      dataType: typeof response.data,
-      keys: response.data ? Object.keys(response.data) : null,
-    });
-
+    // Make sure we're sending the data array directly
     res.json({
       success: true,
-      data: response.data,
+      data: response.data.data || [], // Ensure we always send an array
       timeRange: {
         since: new Date(sinceTimestamp * 1000).toISOString(),
         until: new Date(untilTimestamp * 1000).toISOString(),
@@ -215,8 +268,6 @@ app.get("/page-insights", async (req, res) => {
     console.error("Detailed error:", {
       message: error.message,
       response: error.response?.data,
-      status: error.response?.status,
-      headers: error.response?.headers,
     });
 
     res.status(error.response?.status || 500).json({
