@@ -105,13 +105,32 @@ app.get("/page-insights", async (req, res) => {
       .json({ error: "Missing required parameters: page_id or access_token" });
   }
 
+  const validMetrics = [
+    "page_impressions",
+    "page_engaged_users",
+    "page_fan_adds",
+    "page_views",
+    "page_likes",
+  ];
+
+  // Define the requested metrics, defaulting to the valid ones if none are provided
+  const metrics = req.query.metrics
+    ? req.query.metrics.split(",")
+    : validMetrics;
+
+  // Check if all requested metrics are valid
+  for (const metric of metrics) {
+    if (!validMetrics.includes(metric)) {
+      return res.status(400).json({ error: `Invalid metric: ${metric}` });
+    }
+  }
+
   try {
     const insights = await axios.get(
       `https://graph.facebook.com/${page_id}/insights`,
       {
         params: {
-          metric:
-            "page_fan_adds,page_engaged_users,page_impressions,page_actions_post_reactions_total",
+          metric: metrics.join(","),
           since: since || new Date().setMonth(new Date().getMonth() - 1), // Default to last month
           until: until || new Date(), // Default to current date
           period: "total_over_range",
@@ -119,12 +138,15 @@ app.get("/page-insights", async (req, res) => {
         },
       }
     );
+
     console.log("Facebook Insights Response:", insights.data); // Log the full response data
+
     if (!insights.data || insights.data.length === 0) {
       return res
         .status(404)
         .json({ error: "No insights available for this page." });
     }
+
     res.json(insights.data);
   } catch (error) {
     console.error("Error fetching insights:", error.message);
