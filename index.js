@@ -127,7 +127,7 @@ app.get("/page-insights", async (req, res) => {
           {
             params: {
               metric: validMetrics.join(","),
-              period: period || "day",
+              period: period || "lifetime",
               since: sinceTimestamp,
               until: untilTimestamp,
               access_token,
