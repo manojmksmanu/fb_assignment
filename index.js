@@ -87,6 +87,7 @@ app.get("/pages", async (req, res) => {
     const pages = await axios.get(`https://graph.facebook.com/me/accounts`, {
       headers: { Authorization: `Bearer ${access_token}` },
     });
+    console.log(pages.data)
     res.json(pages.data);
   } catch (error) {
     console.error("Error fetching pages:", error.message);
@@ -107,41 +108,32 @@ app.get("/page-insights", async (req, res) => {
 
   const validMetrics = [
     "page_impressions",
+    "page_impressions_unique",
     "page_engaged_users",
     "page_fan_adds",
-    "page_views",
-    "page_likes",
+    "page_views_total",
   ];
-
-  // Define the requested metrics, defaulting to the valid ones if none are provided
-  const metrics = req.query.metrics
-    ? req.query.metrics.split(",")
-    : validMetrics;
-
-  // Check if all requested metrics are valid
-  for (const metric of metrics) {
-    if (!validMetrics.includes(metric)) {
-      return res.status(400).json({ error: `Invalid metric: ${metric}` });
-    }
-  }
 
   try {
     const insights = await axios.get(
-      `https://graph.facebook.com/${page_id}/insights`,
+      `https://graph.facebook.com/v17.0/${page_id}/insights`,
       {
         params: {
-          metric: metrics.join(","),
-          since: since || new Date().setMonth(new Date().getMonth() - 1), // Default to last month
-          until: until || new Date(), // Default to current date
-          period: "total_over_range",
+          metric: validMetrics.join(","), // Only using valid metrics
+          since: since || Math.floor(Date.now() / 1000 - 2592000), // Default to last 30 days
+          until: until || Math.floor(Date.now() / 1000), // Default to today
           access_token,
         },
       }
     );
 
-    console.log("Facebook Insights Response:", insights.data); // Log the full response data
+    console.log("Facebook Insights Response:", insights.data);
 
-    if (!insights.data || insights.data.length === 0) {
+    if (
+      !insights.data ||
+      !insights.data.data ||
+      insights.data.data.length === 0
+    ) {
       return res
         .status(404)
         .json({ error: "No insights available for this page." });
@@ -149,15 +141,18 @@ app.get("/page-insights", async (req, res) => {
 
     res.json(insights.data);
   } catch (error) {
-    console.error("Error fetching insights:", error.message);
-    if (error.response) {
-      console.error("Full Error Response:", error.response.data); // Log the full response error data
-    }
+    console.error(
+      "Error fetching insights:",
+      error.response?.data || error.message
+    );
     res
       .status(500)
-      .json({ error: "Internal server error. Please check server logs." });
+      .json({
+        error: error.response?.data?.error?.message || "Internal server error",
+      });
   }
 });
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
