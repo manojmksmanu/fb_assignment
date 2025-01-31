@@ -38,7 +38,7 @@ app.get("/auth/facebook", async (req, res) => {
     }
 
     const tokenResponse = await axios.get(
-      `https://graph.facebook.com/v17.0/oauth/access_token`,
+      `https://graph.facebook.com/v22.0/oauth/access_token`,
       {
         params: {
           client_id: FACEBOOK_APP_ID,
@@ -64,7 +64,7 @@ app.get("/me", async (req, res) => {
     }
 
     const userProfile = await axios.get(
-      `https://graph.facebook.com/v17.0/me?fields=id,name,picture`,
+      `https://graph.facebook.com/v22.0/me?fields=id,name,picture`,
       {
         headers: { Authorization: `Bearer ${access_token}` },
       }
@@ -85,7 +85,7 @@ app.get("/pages", async (req, res) => {
     }
 
     const pages = await axios.get(
-      `https://graph.facebook.com/v17.0/me/accounts`,
+      `https://graph.facebook.com/v22.0/me/accounts`,
       {
         headers: { Authorization: `Bearer ${access_token}` },
       }
@@ -123,7 +123,7 @@ app.get("/page-insights", async (req, res) => {
           : Math.floor(Date.now() / 1000);
 
         const response = await axios.get(
-          `https://graph.facebook.com/v18.0/${page_id}/insights`,
+          `https://graph.facebook.com/v22.0/${page_id}/insights`,
           {
             params: {
               metric: validMetrics.join(","),
