@@ -158,13 +158,11 @@ app.get("/pages", async (req, res) => {
 app.get("/page-insights", async (req, res) => {
   const { page_id, access_token, since, until } = req.query;
 
-  // Validate the required parameters
   if (!page_id || !access_token) {
-    return res
-      .status(400)
-      .json({ error: "Missing required parameters: page_id or access_token" });
+    return res.status(400).json({ error: "Missing page_id or access_token" });
   }
 
+  // Use only metrics confirmed to work
   const validMetrics = [
     "page_impressions",
     "page_impressions_unique",
@@ -174,53 +172,44 @@ app.get("/page-insights", async (req, res) => {
   ];
 
   try {
-    // Convert dates to Unix timestamps if they're provided as ISO dates
     const sinceTimestamp = since
-      ? isNaN(since)
-        ? Math.floor(new Date(since).getTime() / 1000)
-        : parseInt(since)
+      ? Math.floor(new Date(since).getTime() / 1000)
       : Math.floor(Date.now() / 1000 - 2592000);
-
     const untilTimestamp = until
-      ? isNaN(until)
-        ? Math.floor(new Date(until).getTime() / 1000)
-        : parseInt(until)
+      ? Math.floor(new Date(until).getTime() / 1000)
       : Math.floor(Date.now() / 1000);
 
-    // Add period parameter for better data granularity
-    const response = await axios({
-      method: "get",
-      url: `https://graph.facebook.com/v17.0/${page_id}/insights`,
-      params: {
-        metric: validMetrics.join(","),
-        period: "day", // Add period parameter
-        since: sinceTimestamp,
-        until: untilTimestamp,
-        access_token: access_token,
-      },
-      validateStatus: false, // Don't throw error on non-2xx status
+    console.log("Fetching Insights:", {
+      page_id,
+      sinceTimestamp,
+      untilTimestamp,
     });
 
-    // Log the complete error response for debugging
-    if (response.status !== 200) {
-      console.error("Facebook API Error:", {
-        status: response.status,
-        data: response.data,
-      });
-      return res.status(response.status).json({
-        error:
-          response.data?.error?.message ||
-          "Error fetching insights from Facebook",
-      });
+    const response = await axios.get(
+      `https://graph.facebook.com/v18.0/${page_id}/insights`,
+      {
+        params: {
+          metric: validMetrics.join(","),
+          period: "day",
+          since: sinceTimestamp,
+          until: untilTimestamp,
+          access_token,
+        },
+        validateStatus: false,
+      }
+    );
+
+    if (response.status !== 200 || !response.data?.data) {
+      console.error("Facebook API Error:", response.data);
+      return res
+        .status(response.status)
+        .json({
+          error:
+            response.data?.error?.message ||
+            "Invalid response from Facebook API",
+        });
     }
 
-    if (!response.data?.data || response.data.data.length === 0) {
-      return res.status(404).json({
-        error: "No insights data available for the specified parameters.",
-      });
-    }
-
-    // Transform the data to make it more usable
     const transformedData = response.data.data.reduce((acc, metric) => {
       acc[metric.name] = metric.values;
       return acc;
@@ -229,28 +218,17 @@ app.get("/page-insights", async (req, res) => {
     res.json({
       success: true,
       data: transformedData,
-      period: "day",
       timeRange: {
         since: new Date(sinceTimestamp * 1000).toISOString(),
         until: new Date(untilTimestamp * 1000).toISOString(),
       },
     });
   } catch (error) {
-    console.error("Error in /page-insights:", {
-      message: error.message,
-      stack: error.stack,
-      response: error.response?.data,
-    });
-
-    res.status(500).json({
-      error: "Failed to fetch page insights",
-      details:
-        process.env.NODE_ENV === "development"
-          ? error.response?.data?.error?.message || error.message
-          : "An unexpected error occurred",
-    });
+    console.error("Error fetching page insights:", error.message);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
