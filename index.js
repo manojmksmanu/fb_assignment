@@ -100,7 +100,7 @@ app.get("/pages", async (req, res) => {
 
 // Fetch page insights
 app.get("/page-insights", async (req, res) => {
-  const { page_id, access_token } = req.query;
+  const { page_id, access_token, since, until, period } = req.query;
 
   if (!page_id || !access_token) {
     return res.status(400).json({ error: "Missing page_id or access_token" });
@@ -114,21 +114,26 @@ app.get("/page-insights", async (req, res) => {
 
 
   try {
-    const sinceTimestamp = Math.floor(Date.now() / 1000 - 7 * 24 * 60 * 60);
-    const untilTimestamp = Math.floor(Date.now() / 1000);
 
-    const response = await axios.get(
-      `https://graph.facebook.com/v18.0/${page_id}/insights`,
-      {
-        params: {
-          metric: validMetrics.join(","),
-          period: "day",
-          since: sinceTimestamp,
-          until: untilTimestamp,
-          access_token,
-        },
-      }
-    );
+        const sinceTimestamp = since
+          ? parseInt(since)
+          : Math.floor(Date.now() / 1000 - 7 * 24 * 60 * 60);
+        const untilTimestamp = until
+          ? parseInt(until)
+          : Math.floor(Date.now() / 1000);
+
+        const response = await axios.get(
+          `https://graph.facebook.com/v18.0/${page_id}/insights`,
+          {
+            params: {
+              metric: validMetrics.join(","),
+              period: period || "day",
+              since: sinceTimestamp,
+              until: untilTimestamp,
+              access_token,
+            },
+          }
+        );
 
     // Make sure we're sending the data array directly
     res.json({
@@ -152,61 +157,7 @@ app.get("/page-insights", async (req, res) => {
   }
 });
 
-// app.get("/page-insights", async (req, res) => {
-//   const { page_id, access_token, since, until, period } = req.query;
-//   console.log(access_token);
-//   if (!page_id || !access_token) {
-//     return res.status(400).json({ error: "Missing page_id or access_token" });
-//   }
 
-//   const validMetrics = [
-//     "page_fans",
-//     "page_engaged_users",
-//     "page_impressions",
-//     "page_reactions_total",
-//   ];
-
-//   try {
-//     const sinceTimestamp = since
-//       ? parseInt(since)
-//       : Math.floor(Date.now() / 1000 - 7 * 24 * 60 * 60);
-//     const untilTimestamp = until
-//       ? parseInt(until)
-//       : Math.floor(Date.now() / 1000);
-
-//     const response = await axios.get(
-//       `https://graph.facebook.com/v18.0/${page_id}/insights`,
-//       {
-//         params: {
-//           metric: validMetrics.join(","),
-//           period: period || "day",
-//           since: sinceTimestamp,
-//           until: untilTimestamp,
-//           access_token,
-//         },
-//       }
-//     );
-
-//     res.json({
-//       success: true,
-//       data: response.data.data || [],
-//       timeRange: {
-//         since: new Date(sinceTimestamp * 1000).toISOString(),
-//         until: new Date(untilTimestamp * 1000).toISOString(),
-//       },
-//     });
-//   } catch (error) {
-//     console.error("Detailed error:", {
-//       message: error.message,
-//       response: error.response?.data,
-//     });
-
-//     res.status(error.response?.status || 500).json({
-//       error: "Error fetching insights",
-//       details: error.response?.data || error.message,
-//     });
-//   }
-// });
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
