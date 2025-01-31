@@ -12,8 +12,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID;
-const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET;
+const FACEBOOK_APP_ID = "914299164196328";
+const FACEBOOK_APP_SECRET = "8105987788e2a1cd3b42f4f6fda0225a";
 const REDIRECT_URI =
   "https://53b0-2409-40d0-114d-b6f0-3529-926-1948-5fc.ngrok-free.app/callback";
 
