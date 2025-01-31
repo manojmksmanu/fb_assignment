@@ -64,7 +64,7 @@ app.get("/me", async (req, res) => {
     }
 
     const userProfile = await axios.get(
-      `https://graph.facebook.com/me?fields=id,name,picture`,
+      `https://graph.facebook.com/v17.0/me?fields=id,name,picture`,
       {
         headers: { Authorization: `Bearer ${access_token}` },
       }
@@ -84,9 +84,12 @@ app.get("/pages", async (req, res) => {
       return res.status(400).json({ error: "Missing access_token parameter" });
     }
 
-    const pages = await axios.get(`https://graph.facebook.com/me/accounts`, {
-      headers: { Authorization: `Bearer ${access_token}` },
-    });
+    const pages = await axios.get(
+      `https://graph.facebook.com/v17.0/me/accounts`,
+      {
+        headers: { Authorization: `Bearer ${access_token}` },
+      }
+    );
     console.log(pages.data)
     res.json(pages.data);
   } catch (error) {
