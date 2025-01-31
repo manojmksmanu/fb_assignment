@@ -279,7 +279,7 @@ app.get("/pages", async (req, res) => {
 
 app.get("/page-insights", async (req, res) => {
   const { page_id, access_token, since, until, period } = req.query;
-
+  console.log(access_token);
   if (!page_id || !access_token) {
     return res.status(400).json({ error: "Missing page_id or access_token" });
   }
