@@ -258,14 +258,19 @@ app.get("/page-insights", async (req, res) => {
     return res.status(400).json({ error: "Missing page_id or access_token" });
   }
 
-  const lifetimeMetrics = ["page_fans", "page_reactions_total"]; // Added more metrics for testing
-  const dailyMetrics = ["page_engaged_users", "page_impressions"];
+  // Using valid metrics
+  const validMetrics = [
+    "page_fans",
+    "page_impressions",
+    "page_engaged_users",
+    "page_reactions_by_type_total",
+  ];
 
-  let selectedMetrics = lifetimeMetrics; // Start with lifetime metrics
-  let params = { access_token };
-
-  params.period = "lifetime"; // default to lifetime for initial request
-  params.metric = selectedMetrics.join(",");
+  let params = {
+    access_token,
+    period: "lifetime",
+    metric: validMetrics.join(","),
+  };
 
   console.log(
     `Requesting: https://graph.facebook.com/v22.0/${page_id}/insights`
@@ -278,7 +283,6 @@ app.get("/page-insights", async (req, res) => {
       { params }
     );
 
-    // Log the response to check the data
     console.log("Facebook API Response:", response.data);
 
     if (
@@ -307,6 +311,7 @@ app.get("/page-insights", async (req, res) => {
     });
   }
 });
+
 
 
 
