@@ -188,7 +188,7 @@ app.get("/page-insights", async (req, res) => {
     params.until = untilInt;
   } else {
     // Use "lifetime" for default requests
-    params.period = "day";
+    params.period = "lifetime";
   }
 
   params.metric = selectedMetrics.join(",");
