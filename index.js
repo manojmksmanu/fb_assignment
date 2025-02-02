@@ -99,65 +99,143 @@ app.get("/pages", async (req, res) => {
 });
 
 // Fetch page insights
+// app.get("/page-insights", async (req, res) => {
+//   const { page_id, access_token, since, until, period } = req.query;
+
+//   if (!page_id || !access_token) {
+//     return res.status(400).json({ error: "Missing page_id or access_token" });
+//   }
+
+//   const validMetrics = [
+//     "page_fan_adds",
+//     "page_views_total",
+//     "page_impressions",
+//   ];
+
+
+//   try {
+
+//         const sinceTimestamp = since
+//           ? parseInt(since)
+//           : Math.floor(Date.now() / 1000 - 7 * 24 * 60 * 60);
+//         const untilTimestamp = until
+//           ? parseInt(until)
+//           : Math.floor(Date.now() / 1000);
+
+//         const response = await axios.get(
+//           `https://graph.facebook.com/v22.0/${page_id}/insights`,
+//           {
+//             params: {
+//               metric: validMetrics.join(","),
+//               period: period || "lifetime",
+//               since: sinceTimestamp,
+//               until: untilTimestamp,
+//               access_token,
+//             },
+//           }
+//         );
+
+//     // Make sure we're sending the data array directly
+//     res.json({
+//       success: true,
+//       data: response.data.data || [], // Ensure we always send an array
+//       timeRange: {
+//         since: new Date(sinceTimestamp * 1000).toISOString(),
+//         until: new Date(untilTimestamp * 1000).toISOString(),
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Detailed error:", {
+//       message: error.message,
+//       response: error.response?.data,
+//     });
+
+//     res.status(error.response?.status || 500).json({
+//       error: "Error fetching insights",
+//       details: error.response?.data || error.message,
+//     });
+//   }
+// });
+
 app.get("/page-insights", async (req, res) => {
-  const { page_id, access_token, since, until, period } = req.query;
+  const { page_id, access_token, since, until } = req.query;
 
   if (!page_id || !access_token) {
     return res.status(400).json({ error: "Missing page_id or access_token" });
   }
 
   const validMetrics = [
-    "page_fan_adds",
-    "page_views_total",
+    "page_fans",
+    "page_engaged_users",
     "page_impressions",
+    "page_reactions_total",
   ];
 
-
   try {
+    // If since and until are provided, use them for filtered data
+    // Otherwise, fetch lifetime data
+    const params = {
+      metric: validMetrics.join(","),
+      access_token,
+    };
 
-        const sinceTimestamp = since
-          ? parseInt(since)
-          : Math.floor(Date.now() / 1000 - 7 * 24 * 60 * 60);
-        const untilTimestamp = until
-          ? parseInt(until)
-          : Math.floor(Date.now() / 1000);
+    if (since && until) {
+      params.period = "day";
+      params.since = parseInt(since);
+      params.until = parseInt(until);
+    } else {
+      params.period = "lifetime";
+    }
 
-        const response = await axios.get(
-          `https://graph.facebook.com/v22.0/${page_id}/insights`,
-          {
-            params: {
-              metric: validMetrics.join(","),
-              period: period || "lifetime",
-              since: sinceTimestamp,
-              until: untilTimestamp,
-              access_token,
-            },
-          }
+    const response = await axios.get(
+      `https://graph.facebook.com/v22.0/${page_id}/insights`,
+      { params }
+    );
+
+    let processedData;
+
+    if (since && until) {
+      // For filtered data, sum up the daily values
+      processedData = response.data.data.map((metric) => {
+        const total = metric.values.reduce(
+          (sum, item) => sum + parseInt(item.value || 0),
+          0
         );
+        return {
+          name: metric.name,
+          values: [
+            {
+              value: total.toString(),
+              end_time: new Date().toISOString(),
+            },
+          ],
+        };
+      });
+    } else {
+      // For lifetime data, use as is
+      processedData = response.data.data;
+    }
 
-    // Make sure we're sending the data array directly
     res.json({
       success: true,
-      data: response.data.data || [], // Ensure we always send an array
-      timeRange: {
-        since: new Date(sinceTimestamp * 1000).toISOString(),
-        until: new Date(untilTimestamp * 1000).toISOString(),
-      },
+      data: processedData,
+      isFiltered: !!(since && until),
+      timeRange:
+        since && until
+          ? {
+              since: new Date(since * 1000).toISOString(),
+              until: new Date(until * 1000).toISOString(),
+            }
+          : null,
     });
   } catch (error) {
-    console.error("Detailed error:", {
-      message: error.message,
-      response: error.response?.data,
-    });
-
+    console.error("Detailed error:", error);
     res.status(error.response?.status || 500).json({
       error: "Error fetching insights",
       details: error.response?.data || error.message,
     });
   }
 });
-
-
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
