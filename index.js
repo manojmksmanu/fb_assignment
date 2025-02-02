@@ -254,22 +254,20 @@ app.get("/pages", async (req, res) => {
 app.get("/page-insights", async (req, res) => {
   const { page_id, access_token } = req.query;
 
+  // Ensure that page_id and access_token are provided
   if (!page_id || !access_token) {
     return res.status(400).json({ error: "Missing page_id or access_token" });
   }
 
-  // Define valid metrics
+  // Define valid metrics that can be requested
   const validMetrics = [
     "page_fans", // Total fans
     "page_impressions", // Impressions
-    "page_engaged_users", // Engaged users
-    "page_reactions_by_type_total", // Reactions by type (like, love, etc.)
   ];
 
-  // Construct query parameters
+  // Construct query parameters to fetch insights
   let params = {
     access_token,
-    period: "lifetime", // Use 'lifetime' period by default
     metric: validMetrics.join(","), // Join the metrics into a comma-separated string
   };
 
@@ -279,6 +277,7 @@ app.get("/page-insights", async (req, res) => {
   console.log("Request params:", params);
 
   try {
+    // Make the request to the Facebook Graph API
     const response = await axios.get(
       `https://graph.facebook.com/v22.0/${page_id}/insights`,
       { params }
@@ -286,7 +285,7 @@ app.get("/page-insights", async (req, res) => {
 
     console.log("Facebook API Response:", response.data);
 
-    // Check if response data is valid
+    // Check if response contains valid data
     if (
       !response.data ||
       !response.data.data ||
@@ -297,11 +296,20 @@ app.get("/page-insights", async (req, res) => {
         .json({ error: "No data available for the requested metrics" });
     }
 
-    // Return the successful response with data
+    // Return the insights data as JSON in the expected format
     res.json({
       success: true,
-      data: response.data.data, // Return the insights data
-      isFiltered: false, // No filter applied for now
+      data: response.data.data.map((item) => ({
+        ...item,
+        // Example of how to modify the data structure
+        title: item.title || item.name, // Ensuring title exists
+        description: item.description || "", // Providing a fallback if description is missing
+        values: item.values.map((value) => ({
+          value: value.value,
+          end_time: value.end_time,
+        })),
+      })),
+      isFiltered: false, // No filters applied in this case
     });
   } catch (error) {
     console.error(
@@ -309,15 +317,13 @@ app.get("/page-insights", async (req, res) => {
       error.response?.data || error.message
     );
 
-    // Send the error response with details
+    // Return the error response with status and details
     res.status(error.response?.status || 500).json({
       error: "Error fetching insights",
       details: error.response?.data || error.message,
     });
   }
 });
-
-
 
 
 const PORT = process.env.PORT || 3000;
