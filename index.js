@@ -157,6 +157,8 @@ app.get("/pages", async (req, res) => {
 //   }
 // });
 
+const axios = require("axios");
+
 app.get("/page-insights", async (req, res) => {
   const { page_id, access_token, since, until } = req.query;
 
@@ -164,55 +166,64 @@ app.get("/page-insights", async (req, res) => {
     return res.status(400).json({ error: "Missing page_id or access_token" });
   }
 
-  const validMetrics = [
-    "page_fans",
-    "page_engaged_users",
-    "page_impressions",
-  ];
+  const validMetrics = ["page_fans", "page_engaged_users", "page_impressions"];
 
   try {
-    // If since and until are provided, use them for filtered data
-    // Otherwise, fetch lifetime data
-    const params = {
+    let params = {
       metric: validMetrics.join(","),
       access_token,
+      period: "lifetime", // Default to lifetime
     };
 
+    // Validate `since` and `until`
     if (since && until) {
+      const sinceInt = parseInt(since);
+      const untilInt = parseInt(until);
+
+      if (isNaN(sinceInt) || isNaN(untilInt) || sinceInt > untilInt) {
+        return res.status(400).json({ error: "Invalid date range provided" });
+      }
+
       params.period = "day";
-      params.since = parseInt(since);
-      params.until = parseInt(until);
-    } else {
-      params.period = "lifetime";
+      params.since = sinceInt;
+      params.until = untilInt;
     }
 
+    // Log request URL for debugging
+    console.log(
+      `Requesting: https://graph.facebook.com/v22.0/${page_id}/insights with params`,
+      params
+    );
+
     const response = await axios.get(
-      `https://graph.facebook.com/v18.0/${page_id}/insights`,
+      `https://graph.facebook.com/v22.0/${page_id}/insights`,
       { params }
     );
+
+    if (!response.data || !response.data.data) {
+      return res
+        .status(400)
+        .json({ error: "Invalid response from Facebook API" });
+    }
 
     let processedData;
 
     if (since && until) {
-      // For filtered data, sum up the daily values
+      // Sum up the daily values
       processedData = response.data.data.map((metric) => {
         const total = metric.values.reduce(
-          (sum, item) => sum + parseInt(item.value || 0),
+          (sum, item) => sum + (parseInt(item.value) || 0),
           0
         );
         return {
           name: metric.name,
           values: [
-            {
-              value: total.toString(),
-              end_time: new Date().toISOString(),
-            },
+            { value: total.toString(), end_time: new Date().toISOString() },
           ],
         };
       });
     } else {
-      // For lifetime data, use as is
-      processedData = response.data.data;
+      processedData = response.data.data; // Use lifetime data directly
     }
 
     res.json({
@@ -222,19 +233,23 @@ app.get("/page-insights", async (req, res) => {
       timeRange:
         since && until
           ? {
-              since: new Date(since * 1000).toISOString(),
-              until: new Date(until * 1000).toISOString(),
+              since: new Date(sinceInt * 1000).toISOString(),
+              until: new Date(untilInt * 1000).toISOString(),
             }
           : null,
     });
   } catch (error) {
-    console.error("Detailed error:", error);
+    console.error(
+      "Error fetching insights:",
+      error.response?.data || error.message
+    );
     res.status(error.response?.status || 500).json({
       error: "Error fetching insights",
       details: error.response?.data || error.message,
     });
   }
 });
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
