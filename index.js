@@ -168,7 +168,6 @@ app.get("/page-insights", async (req, res) => {
     "page_fans",
     "page_engaged_users",
     "page_impressions",
-    "page_reactions_total",
   ];
 
   try {
