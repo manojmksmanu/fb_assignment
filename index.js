@@ -258,21 +258,19 @@ app.get("/page-insights", async (req, res) => {
     return res.status(400).json({ error: "Missing page_id or access_token" });
   }
 
-  // Define lifetime and daily metrics
   const lifetimeMetrics = ["page_fans"];
   const dailyMetrics = ["page_engaged_users", "page_impressions"];
 
   let selectedMetrics = lifetimeMetrics;
   let params = { access_token };
 
-  // Use "lifetime" for default requests
   params.period = "lifetime";
   params.metric = selectedMetrics.join(",");
 
   console.log(
-    `Requesting: https://graph.facebook.com/v22.0/${page_id}/insights`,
-    params
+    `Requesting: https://graph.facebook.com/v22.0/${page_id}/insights`
   );
+  console.log("Request params:", params);
 
   try {
     const response = await axios.get(
@@ -280,13 +278,15 @@ app.get("/page-insights", async (req, res) => {
       { params }
     );
 
+    // Log the response to check the data
+    console.log("Facebook API Response:", response.data);
+
     if (!response.data || !response.data.data) {
       return res
         .status(400)
         .json({ error: "Invalid response from Facebook API" });
     }
 
-    // Return the processed data with the appropriate response
     res.json({
       success: true,
       data: response.data.data,
@@ -303,6 +303,7 @@ app.get("/page-insights", async (req, res) => {
     });
   }
 });
+
 
 
 const PORT = process.env.PORT || 3000;
