@@ -258,18 +258,19 @@ app.get("/page-insights", async (req, res) => {
     return res.status(400).json({ error: "Missing page_id or access_token" });
   }
 
-  // Using valid metrics
+  // Define valid metrics
   const validMetrics = [
-    "page_fans",
-    "page_impressions",
-    "page_engaged_users",
-    "page_reactions_by_type_total",
+    "page_fans", // Total fans
+    "page_impressions", // Impressions
+    "page_engaged_users", // Engaged users
+    "page_reactions_by_type_total", // Reactions by type (like, love, etc.)
   ];
 
+  // Construct query parameters
   let params = {
     access_token,
-    period: "lifetime",
-    metric: validMetrics.join(","),
+    period: "lifetime", // Use 'lifetime' period by default
+    metric: validMetrics.join(","), // Join the metrics into a comma-separated string
   };
 
   console.log(
@@ -285,6 +286,7 @@ app.get("/page-insights", async (req, res) => {
 
     console.log("Facebook API Response:", response.data);
 
+    // Check if response data is valid
     if (
       !response.data ||
       !response.data.data ||
@@ -295,16 +297,19 @@ app.get("/page-insights", async (req, res) => {
         .json({ error: "No data available for the requested metrics" });
     }
 
+    // Return the successful response with data
     res.json({
       success: true,
-      data: response.data.data,
-      isFiltered: false, // No filter applied
+      data: response.data.data, // Return the insights data
+      isFiltered: false, // No filter applied for now
     });
   } catch (error) {
     console.error(
       "Error fetching insights:",
       error.response?.data || error.message
     );
+
+    // Send the error response with details
     res.status(error.response?.status || 500).json({
       error: "Error fetching insights",
       details: error.response?.data || error.message,
