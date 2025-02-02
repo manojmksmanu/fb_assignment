@@ -159,38 +159,114 @@ app.get("/pages", async (req, res) => {
 
 
 
+// app.get("/page-insights", async (req, res) => {
+//   const { page_id, access_token, since, until } = req.query;
+
+//   if (!page_id || !access_token) {
+//     return res.status(400).json({ error: "Missing page_id or access_token" });
+//   }
+
+//   // Separate lifetime and daily metrics
+//   const lifetimeMetrics = ["page_fans"]; // Only page_fans supports "lifetime"
+//   const dailyMetrics = ["page_engaged_users", "page_impressions"]; // Requires "day" period
+
+//   let selectedMetrics = lifetimeMetrics;
+//   let params = { access_token };
+
+//   if (since && until) {
+//     const sinceInt = parseInt(since);
+//     const untilInt = parseInt(until);
+
+//     if (isNaN(sinceInt) || isNaN(untilInt) || sinceInt > untilInt) {
+//       return res.status(400).json({ error: "Invalid date range provided" });
+//     }
+
+//     // Use "day" period for date range queries
+//     selectedMetrics = dailyMetrics;
+//     params.period = "day";
+//     params.since = sinceInt;
+//     params.until = untilInt;
+//   } else {
+//     // Use "lifetime" for default requests
+//     params.period = "lifetime";
+//   }
+
+//   params.metric = selectedMetrics.join(",");
+
+//   console.log(
+//     `Requesting: https://graph.facebook.com/v22.0/${page_id}/insights`,
+//     params
+//   );
+
+//   try {
+//     const response = await axios.get(
+//       `https://graph.facebook.com/v22.0/${page_id}/insights`,
+//       { params }
+//     );
+
+//     if (!response.data || !response.data.data) {
+//       return res
+//         .status(400)
+//         .json({ error: "Invalid response from Facebook API" });
+//     }
+
+//     let processedData = response.data.data;
+
+//     if (since && until) {
+//       // Sum up the daily values
+//       processedData = response.data.data.map((metric) => ({
+//         name: metric.name,
+//         values: [
+//           {
+//             value: metric.values
+//               .reduce((sum, item) => sum + (parseInt(item.value) || 0), 0)
+//               .toString(),
+//             end_time: new Date().toISOString(),
+//           },
+//         ],
+//       }));
+//     }
+
+//     res.json({
+//       success: true,
+//       data: processedData,
+//       isFiltered: !!(since && until),
+//       timeRange:
+//         since && until
+//           ? {
+//               since: new Date(sinceInt * 1000).toISOString(),
+//               until: new Date(untilInt * 1000).toISOString(),
+//             }
+//           : null,
+//     });
+//   } catch (error) {
+//     console.error(
+//       "Error fetching insights:",
+//       error.response?.data || error.message
+//     );
+//     res.status(error.response?.status || 500).json({
+//       error: "Error fetching insights",
+//       details: error.response?.data || error.message,
+//     });
+//   }
+// });
+
 app.get("/page-insights", async (req, res) => {
-  const { page_id, access_token, since, until } = req.query;
+  const { page_id, access_token } = req.query;
 
   if (!page_id || !access_token) {
     return res.status(400).json({ error: "Missing page_id or access_token" });
   }
 
-  // Separate lifetime and daily metrics
-  const lifetimeMetrics = ["page_fans"]; // Only page_fans supports "lifetime"
-  const dailyMetrics = ["page_engaged_users", "page_impressions"]; // Requires "day" period
+  // Define lifetime and daily metrics
+  const lifetimeMetrics = ["page_fans"];
+  const dailyMetrics = ["page_engaged_users", "page_impressions"];
 
   let selectedMetrics = lifetimeMetrics;
   let params = { access_token };
 
-  if (since && until) {
-    const sinceInt = parseInt(since);
-    const untilInt = parseInt(until);
-
-    if (isNaN(sinceInt) || isNaN(untilInt) || sinceInt > untilInt) {
-      return res.status(400).json({ error: "Invalid date range provided" });
-    }
-
-    // Use "day" period for date range queries
-    selectedMetrics = dailyMetrics;
-    params.period = "day";
-    params.since = sinceInt;
-    params.until = untilInt;
-  } else {
-    // Use "lifetime" for default requests
-    params.period = "lifetime";
-  }
-
+  // Use "lifetime" for default requests
+  params.period = "lifetime";
   params.metric = selectedMetrics.join(",");
 
   console.log(
@@ -210,34 +286,11 @@ app.get("/page-insights", async (req, res) => {
         .json({ error: "Invalid response from Facebook API" });
     }
 
-    let processedData = response.data.data;
-
-    if (since && until) {
-      // Sum up the daily values
-      processedData = response.data.data.map((metric) => ({
-        name: metric.name,
-        values: [
-          {
-            value: metric.values
-              .reduce((sum, item) => sum + (parseInt(item.value) || 0), 0)
-              .toString(),
-            end_time: new Date().toISOString(),
-          },
-        ],
-      }));
-    }
-
+    // Return the processed data with the appropriate response
     res.json({
       success: true,
-      data: processedData,
-      isFiltered: !!(since && until),
-      timeRange:
-        since && until
-          ? {
-              since: new Date(sinceInt * 1000).toISOString(),
-              until: new Date(untilInt * 1000).toISOString(),
-            }
-          : null,
+      data: response.data.data,
+      isFiltered: false, // No filter applied
     });
   } catch (error) {
     console.error(
