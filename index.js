@@ -253,6 +253,7 @@ app.get("/pages", async (req, res) => {
 
 app.get("/page-insights", async (req, res) => {
   const { page_id, access_token } = req.query;
+  console.log(page_id,access_token)
 
   // Ensure that page_id and access_token are provided
   if (!page_id || !access_token) {
