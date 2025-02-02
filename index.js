@@ -157,7 +157,6 @@ app.get("/pages", async (req, res) => {
 //   }
 // });
 
-const axios = require("axios");
 
 app.get("/page-insights", async (req, res) => {
   const { page_id, access_token, since, until } = req.query;
