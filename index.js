@@ -158,6 +158,8 @@ app.get("/pages", async (req, res) => {
 // });
 
 
+const axios = require("axios");
+
 app.get("/page-insights", async (req, res) => {
   const { page_id, access_token, since, until } = req.query;
 
@@ -165,35 +167,39 @@ app.get("/page-insights", async (req, res) => {
     return res.status(400).json({ error: "Missing page_id or access_token" });
   }
 
-  const validMetrics = ["page_fans", "page_engaged_users", "page_impressions"];
+  // Separate lifetime and daily metrics
+  const lifetimeMetrics = ["page_fans"]; // Only page_fans supports "lifetime"
+  const dailyMetrics = ["page_engaged_users", "page_impressions"]; // Requires "day" period
 
-  try {
-    let params = {
-      metric: validMetrics.join(","),
-      access_token,
-      period: "lifetime", // Default to lifetime
-    };
+  let selectedMetrics = lifetimeMetrics;
+  let params = { access_token };
 
-    // Validate `since` and `until`
-    if (since && until) {
-      const sinceInt = parseInt(since);
-      const untilInt = parseInt(until);
+  if (since && until) {
+    const sinceInt = parseInt(since);
+    const untilInt = parseInt(until);
 
-      if (isNaN(sinceInt) || isNaN(untilInt) || sinceInt > untilInt) {
-        return res.status(400).json({ error: "Invalid date range provided" });
-      }
-
-      params.period = "day";
-      params.since = sinceInt;
-      params.until = untilInt;
+    if (isNaN(sinceInt) || isNaN(untilInt) || sinceInt > untilInt) {
+      return res.status(400).json({ error: "Invalid date range provided" });
     }
 
-    // Log request URL for debugging
-    console.log(
-      `Requesting: https://graph.facebook.com/v22.0/${page_id}/insights with params`,
-      params
-    );
+    // Use "day" period for date range queries
+    selectedMetrics = dailyMetrics;
+    params.period = "day";
+    params.since = sinceInt;
+    params.until = untilInt;
+  } else {
+    // Use "lifetime" for default requests
+    params.period = "lifetime";
+  }
 
+  params.metric = selectedMetrics.join(",");
+
+  console.log(
+    `Requesting: https://graph.facebook.com/v22.0/${page_id}/insights`,
+    params
+  );
+
+  try {
     const response = await axios.get(
       `https://graph.facebook.com/v22.0/${page_id}/insights`,
       { params }
@@ -205,24 +211,21 @@ app.get("/page-insights", async (req, res) => {
         .json({ error: "Invalid response from Facebook API" });
     }
 
-    let processedData;
+    let processedData = response.data.data;
 
     if (since && until) {
       // Sum up the daily values
-      processedData = response.data.data.map((metric) => {
-        const total = metric.values.reduce(
-          (sum, item) => sum + (parseInt(item.value) || 0),
-          0
-        );
-        return {
-          name: metric.name,
-          values: [
-            { value: total.toString(), end_time: new Date().toISOString() },
-          ],
-        };
-      });
-    } else {
-      processedData = response.data.data; // Use lifetime data directly
+      processedData = response.data.data.map((metric) => ({
+        name: metric.name,
+        values: [
+          {
+            value: metric.values
+              .reduce((sum, item) => sum + (parseInt(item.value) || 0), 0)
+              .toString(),
+            end_time: new Date().toISOString(),
+          },
+        ],
+      }));
     }
 
     res.json({
@@ -248,6 +251,7 @@ app.get("/page-insights", async (req, res) => {
     });
   }
 });
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
