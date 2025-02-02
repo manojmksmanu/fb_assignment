@@ -145,7 +145,7 @@ app.get("/page-insights", async (req, res) => {
       success: true,
       data: response.data.data.map((item) => ({
         ...item,
-        name: formatName(item.name) || ,
+        name: formatName(item.name),
         title: item.title || item.name,
         description: item.description || "",
         values: item.values.map((value) => ({
@@ -157,10 +157,10 @@ app.get("/page-insights", async (req, res) => {
     });
 
     function formatName(name) {
-      if (!name) return ""; // Handle case where name is undefined or null
+      if (!name) return ""; 
       return name
-        .replace(/_/g, " ") // Replace underscores with spaces
-        .replace(/\b\w/g, (char) => char.toUpperCase()); // Capitalize first letter of each word
+        .replace(/_/g, " ") 
+        .replace(/\b\w/g, (char) => char.toUpperCase());
     }
   } catch (error) {
     console.error(
